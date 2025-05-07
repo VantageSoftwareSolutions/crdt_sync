@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:crdt/crdt.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'globals.dart';
+
 typedef Handshake = ({
   String nodeId,
   Hlc lastModified,
@@ -92,6 +94,6 @@ class SyncSocket {
   }
 
   void _log(String msg) {
-    if (verbose) print(msg);
+    if (verbose) logDebug(msg);
   }
 }

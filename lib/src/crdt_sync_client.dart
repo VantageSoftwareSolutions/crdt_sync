@@ -5,6 +5,7 @@ import 'package:crdt/crdt.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'crdt_sync.dart';
+import 'globals.dart';
 
 const _minDelay = 2; // In seconds. Minimum is 2 because 1² = 1.
 const _maxDelay = 10;
@@ -74,7 +75,12 @@ class CrdtSyncClient {
 
     try {
       final socket = WebSocketChannel.connect(uri);
-      await socket.ready;
+      try {
+        await socket.ready.timeout(Duration(seconds: 10));
+      } on TimeoutException {
+        _maybeReconnect();
+        return;
+      }
       _crdtSync = CrdtSync.client(
         crdt,
         socket,
@@ -131,6 +137,6 @@ class CrdtSyncClient {
   }
 
   void _log(String msg) {
-    if (verbose) print(msg);
+    if (verbose) logDebug(msg);
   }
 }

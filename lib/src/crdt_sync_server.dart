@@ -5,6 +5,7 @@ import 'package:crdt/crdt.dart';
 import 'package:web_socket_channel/io.dart';
 
 import 'crdt_sync.dart';
+import 'globals.dart';
 
 const defaultPingInterval = Duration(seconds: 20);
 
@@ -41,7 +42,7 @@ Future<void> listen(
   bool verbose = false,
 }) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
-  if (verbose) print('Listening on localhost:${server.port}');
+  if (verbose) logDebug('Listening on localhost:${server.port}');
 
   await for (HttpRequest request in server) {
     onConnecting?.call(request);
@@ -61,7 +62,7 @@ Future<void> listen(
         verbose: verbose,
       );
     } catch (e) {
-      if (verbose) print(e);
+      if (verbose) logInfo(e);
       onUpgradeError?.call(e, request);
     }
   }

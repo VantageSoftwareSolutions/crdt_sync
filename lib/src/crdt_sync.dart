@@ -4,6 +4,7 @@ import 'package:crdt/crdt.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'sync_socket.dart';
+import 'globals.dart';
 
 typedef ClientHandshakeDataBuilder = FutureOr<Object>? Function();
 typedef ServerHandshakeDataBuilder = FutureOr<Object>? Function(
@@ -275,6 +276,6 @@ class CrdtSync {
   }
 
   void _logException(Object error, StackTrace st) {
-    print(verbose ? '$error\n$st' : '$error');
+    logError(verbose ? '$error\n$st' : '$error', st);
   }
 }
