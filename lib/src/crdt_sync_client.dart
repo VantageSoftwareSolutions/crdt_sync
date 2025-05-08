@@ -7,7 +7,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'crdt_sync.dart';
 import 'globals.dart';
 
-const _minDelay = 2; // In seconds. Minimum is 2 because 1² = 1.
+const _minDelay = 1; // In seconds. Now using linear backoff
 const _maxDelay = 10;
 
 enum SocketState { disconnected, connecting, connected }
@@ -78,6 +78,8 @@ class CrdtSyncClient {
       try {
         await socket.ready.timeout(Duration(seconds: 10));
       } on TimeoutException {
+        _reconnectDelay = _minDelay;
+        _setState(SocketState.disconnected);
         _maybeReconnect();
         return;
       }
@@ -126,7 +128,7 @@ class CrdtSyncClient {
       _reconnectTimer =
           Timer(Duration(seconds: _reconnectDelay), () => connect());
       _log('Reconnecting in ${_reconnectDelay}s…');
-      _reconnectDelay = min(_reconnectDelay * 2, _maxDelay);
+      _reconnectDelay = min(_reconnectDelay + _minDelay, _maxDelay);
     }
   }
 
