@@ -7,18 +7,12 @@ import 'sync_socket.dart';
 import 'globals.dart';
 
 typedef ClientHandshakeDataBuilder = FutureOr<Object>? Function();
-typedef ServerHandshakeDataBuilder = FutureOr<Object>? Function(
-    String peerId, Object? peerData);
-typedef ChangesetBuilder = FutureOr<CrdtChangeset> Function(
-    {Iterable<String>? onlyTables,
-    String? onlyNodeId,
-    String? exceptNodeId,
-    Hlc? modifiedOn,
-    Hlc? modifiedAfter});
+typedef ServerHandshakeDataBuilder = FutureOr<Object>? Function(String peerId, Object? peerData);
+typedef ChangesetBuilder =
+    FutureOr<CrdtChangeset> Function({Iterable<String>? onlyTables, String? onlyNodeId, String? exceptNodeId, Hlc? modifiedOn, Hlc? modifiedAfter});
 typedef RecordValidator = FutureOr<bool> Function(String table, CrdtRecord);
 typedef ChangesetMapper = CrdtRecord Function(String table, CrdtRecord record);
-typedef OnChangeset = void Function(
-    String nodeId, Map<String, int> recordCounts);
+typedef OnChangeset = void Function(String nodeId, Map<String, int> recordCounts);
 typedef OnConnect = void Function(String peerId, Object? customData);
 typedef OnDisconnect = void Function(String peerId, int? code, String? reason);
 
@@ -84,19 +78,19 @@ class CrdtSync {
     OnChangeset? onChangesetSent,
     bool verbose = false,
   }) : this._(
-          crdt,
-          webSocket,
-          isClient: true,
-          clientHandshakeDataBuilder: handshakeDataBuilder,
-          changesetBuilder: changesetBuilder,
-          validateRecord: validateRecord,
-          mapIncomingChangeset: mapIncomingChangeset,
-          onConnect: onConnect,
-          onDisconnect: onDisconnect,
-          onChangesetReceived: onChangesetReceived,
-          onChangesetSent: onChangesetSent,
-          verbose: verbose,
-        );
+         crdt,
+         webSocket,
+         isClient: true,
+         clientHandshakeDataBuilder: handshakeDataBuilder,
+         changesetBuilder: changesetBuilder,
+         validateRecord: validateRecord,
+         mapIncomingChangeset: mapIncomingChangeset,
+         onConnect: onConnect,
+         onDisconnect: onDisconnect,
+         onChangesetReceived: onChangesetReceived,
+         onChangesetSent: onChangesetSent,
+         verbose: verbose,
+       );
 
   /// Takes an established [WebSocket] connection to start synchronizing with
   /// another CrdtSync socket.
@@ -122,19 +116,19 @@ class CrdtSync {
     OnChangeset? onChangesetSent,
     bool verbose = false,
   }) : this._(
-          crdt,
-          webSocket,
-          isClient: false,
-          serverHandshakeDataBuilder: handshakeDataBuilder,
-          changesetBuilder: changesetBuilder,
-          validateRecord: validateRecord,
-          mapIncomingChangeset: mapIncomingChangeset,
-          onConnect: onConnect,
-          onDisconnect: onDisconnect,
-          onChangesetReceived: onChangesetReceived,
-          onChangesetSent: onChangesetSent,
-          verbose: verbose,
-        );
+         crdt,
+         webSocket,
+         isClient: false,
+         serverHandshakeDataBuilder: handshakeDataBuilder,
+         changesetBuilder: changesetBuilder,
+         validateRecord: validateRecord,
+         mapIncomingChangeset: mapIncomingChangeset,
+         onConnect: onConnect,
+         onDisconnect: onDisconnect,
+         onChangesetReceived: onChangesetReceived,
+         onChangesetSent: onChangesetSent,
+         verbose: verbose,
+       );
 
   CrdtSync._(
     this.crdt,
@@ -150,9 +144,8 @@ class CrdtSync {
     required this.onChangesetReceived,
     required this.onChangesetSent,
     required this.verbose,
-  })  : changesetBuilder = changesetBuilder ?? crdt.getChangeset,
-        assert((isClient && serverHandshakeDataBuilder == null) ||
-            (!isClient && clientHandshakeDataBuilder == null)) {
+  }) : changesetBuilder = changesetBuilder ?? crdt.getChangeset,
+       assert((isClient && serverHandshakeDataBuilder == null) || (!isClient && clientHandshakeDataBuilder == null)) {
     _handle(webSocket);
   }
 
@@ -178,22 +171,13 @@ class CrdtSync {
       // Monitor for changes and send them immediately
       localSubscription = crdt.onTablesChanged
           .where((e) => e.tables.isNotEmpty)
-          .asyncMap((e) => changesetBuilder(
-                onlyTables: e.tables,
-                onlyNodeId: isClient ? crdt.nodeId : null,
-                exceptNodeId: isClient ? null : _peerId,
-                modifiedOn: e.hlc,
-              ))
+          .asyncMap((e) => changesetBuilder(onlyTables: e.tables, exceptNodeId: _peerId, modifiedOn: e.hlc))
           .listen(_sendChangeset);
 
       // Send changeset since last sync.
       // This is done after monitoring to prevent losing changes that happen
       // exactly between both calls.
-      final changeset = await (changesetBuilder(
-        onlyNodeId: isClient ? crdt.nodeId : null,
-        exceptNodeId: isClient ? null : _peerId,
-        modifiedAfter: handshake.lastModified,
-      ));
+      final changeset = await (changesetBuilder(exceptNodeId: _peerId, modifiedAfter: handshake.lastModified));
       _sendChangeset(changeset);
     } catch (e, st) {
       await localSubscription?.cancel();
@@ -207,17 +191,12 @@ class CrdtSync {
   /// Supply an optional [code] and [reason] to be forwarded to the peer.
   /// See https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code for
   /// a list of permissible codes.
-  Future<void> close([int? code, String? reason]) =>
-      _syncSocket.close(code, reason);
+  Future<void> close([int? code, String? reason]) => _syncSocket.close(code, reason);
 
   Future<Handshake> _performHandshake() async {
     if (isClient) {
       // Introduce ourselves
-      _syncSocket.sendHandshake(
-        crdt.nodeId,
-        await crdt.getLastModified(exceptNodeId: crdt.nodeId),
-        await clientHandshakeDataBuilder?.call(),
-      );
+      _syncSocket.sendHandshake(crdt.nodeId, await crdt.getLastModified(exceptNodeId: crdt.nodeId), await clientHandshakeDataBuilder?.call());
       return await _syncSocket.receiveHandshake();
     } else {
       // A good client always introduces itself first
@@ -225,8 +204,7 @@ class CrdtSync {
       _syncSocket.sendHandshake(
         crdt.nodeId,
         await crdt.getLastModified(onlyNodeId: handshake.nodeId),
-        await serverHandshakeDataBuilder?.call(
-            handshake.nodeId, handshake.data),
+        await serverHandshakeDataBuilder?.call(handshake.nodeId, handshake.data),
       );
       return handshake;
     }
@@ -235,8 +213,7 @@ class CrdtSync {
   void _sendChangeset(CrdtChangeset changeset) {
     if (changeset.recordCount == 0) return;
     _syncSocket.sendChangeset(changeset);
-    onChangesetSent?.call(
-        _peerId!, changeset.map((key, value) => MapEntry(key, value.length)));
+    onChangesetSent?.call(_peerId!, changeset.map((key, value) => MapEntry(key, value.length)));
   }
 
   Future<void> _mergeChangeset(CrdtChangeset changeset) async {
@@ -245,10 +222,7 @@ class CrdtSync {
       final validatedChangeset = <String, CrdtTableChangeset>{};
       for (final entry in changeset.entries) {
         final table = entry.key;
-        final records = (await Future.wait(entry.value
-                .map((e) async => await validateRecord!(table, e) ? e : null)))
-            .nonNulls
-            .toList();
+        final records = (await Future.wait(entry.value.map((e) async => await validateRecord!(table, e) ? e : null))).nonNulls.toList();
         if (records.isNotEmpty) validatedChangeset[table] = records;
       }
       changeset = validatedChangeset;
@@ -256,18 +230,11 @@ class CrdtSync {
 
     // Allow implementation to intercept and modify records
     if (mapIncomingChangeset != null) {
-      changeset = changeset.map(
-        (table, records) => MapEntry(
-            table,
-            records
-                .map((record) => mapIncomingChangeset!(table, record))
-                .toList()),
-      );
+      changeset = changeset.map((table, records) => MapEntry(table, records.map((record) => mapIncomingChangeset!(table, record)).toList()));
     }
 
     // Notify and merge
-    onChangesetReceived?.call(
-        _peerId!, changeset.map((key, value) => MapEntry(key, value.length)));
+    onChangesetReceived?.call(_peerId!, changeset.map((key, value) => MapEntry(key, value.length)));
     try {
       await crdt.merge(changeset);
     } catch (e, st) {
