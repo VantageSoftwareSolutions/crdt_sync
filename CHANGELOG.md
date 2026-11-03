@@ -1,3 +1,10 @@
+## 1.0.13
+
+- Add `pingInterval` to `CrdtSyncClient` (default 15s): the client WebSocket now
+  pings the server and is closed if a pong is not received within the interval,
+  so silently dropped connections are detected within seconds instead of waiting
+  for OS-level TCP timeouts. No effect on web.
+
 ## 1.0.10
 
 - Update dependencies
