@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:crdt/crdt.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'crdt_sync.dart';
 import 'globals.dart';
+import 'sync_socket_factory.dart';
 
 const _minDelay = 1; // In seconds. Now using linear backoff
 const _maxDelay = 10;
@@ -25,6 +25,14 @@ class CrdtSyncClient {
   final OnChangeset? onChangesetReceived;
   final OnChangeset? onChangesetSent;
   final bool verbose;
+
+  /// How often the client pings the server over the WebSocket.
+  ///
+  /// On native platforms the connection is closed if a pong is not received
+  /// within this interval, so a silently dropped ("zombie") link is detected
+  /// within roughly 1-2 intervals rather than whenever the OS gives up on TCP
+  /// retransmits. Has no effect on web. Set to null to disable.
+  final Duration? pingInterval;
 
   CrdtSync? _crdtSync;
 
@@ -60,6 +68,7 @@ class CrdtSyncClient {
     this.onChangesetReceived,
     this.onChangesetSent,
     this.verbose = false,
+    this.pingInterval = const Duration(seconds: 15),
   }) : assert({'ws', 'wss'}.contains(uri.scheme));
 
   /// Start trying to connect to [uri].
@@ -74,7 +83,7 @@ class CrdtSyncClient {
     onConnecting?.call();
 
     try {
-      final socket = WebSocketChannel.connect(uri);
+      final socket = connectSyncSocket(uri, pingInterval: pingInterval);
       try {
         await socket.ready.timeout(Duration(seconds: 10));
       } on TimeoutException {
